@@ -2,25 +2,10 @@ name: Build Gateway bootloaders
 
 on:
 
-  # Allow other workflows (possibly in other repositories)
-  # to programatically trigger this workflow.
-  workflow_call:
-    inputs:
-      rcwRef:
-        description: Git ref (tag, branch or commit hash) of the rcw repository
-        type: string
-        default: mono-development
-      atfRef:
-        description: Git ref (tag, branch or commit hash) of the atf repository
-        type: string
-        default: mono-development
-      ubootRef:
-        description: Git ref (tag, branch or commit hash) of the u-boot repository
-        type: string
-        default: mono-development
+  repository_dispatch:
+    types: [trigger-build-bootloaders]
 
-  # Allow this workflow to be triggered manually from the GitHub website UI.
-  workflow_dispatch:
+  workflow_call:
     inputs:
       rcwRef:
         description: Git ref (tag, branch or commit hash) of the rcw repository
@@ -51,21 +36,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: dvnrrs-mono/rcw
-          ref: ${{ inputs.rcwRef }}
+          ref: ${{ github.event.client_payload.rcwRef || inputs.rcwRef }}
           path: rcw
 
       - name: Check out atf repository
         uses: actions/checkout@v4
         with:
           repository: dvnrrs-mono/atf
-          ref: ${{ inputs.atfRef }}
+          ref: ${{ github.event.client_payload.atfRef || inputs.atfRef }}
           path: atf
 
       - name: Check out u-boot repository
         uses: actions/checkout@v4
         with:
           repository: dvnrrs-mono/u-boot
-          ref: ${{ inputs.ubootRef }}
+          ref: ${{ github.event.client_payload.ubootRef || inputs.ubootRef }}
           path: u-boot
 
       - name: Build RCW
