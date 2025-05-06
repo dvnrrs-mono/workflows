@@ -5,7 +5,7 @@ on:
   repository_dispatch:
     types: [trigger-build-bootloaders]
 
-  workflow_call:
+  workflow_dispatch:
     inputs:
       rcwRef:
         description: Git ref (tag, branch or commit hash) of the rcw repository
@@ -19,6 +19,8 @@ on:
         description: Git ref (tag, branch or commit hash) of the u-boot repository
         type: string
         default: mono-development
+
+run-name: "Triggered by ${{ github.event.client_payload.from || 'user' }}"
 
 jobs:
 
