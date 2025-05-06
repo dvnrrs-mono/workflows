@@ -1,0 +1,96 @@
+name: Build Gateway bootloaders
+
+on:
+
+  # Allow other workflows (possibly in other repositories)
+  # to programatically trigger this workflow.
+  workflow_call:
+    inputs:
+      rcwRef:
+        description: Git ref (tag, branch or commit hash) of the rcw repository
+        type: string
+        default: mono-development
+      atfRef:
+        description: Git ref (tag, branch or commit hash) of the atf repository
+        type: string
+        default: mono-development
+      ubootRef:
+        description: Git ref (tag, branch or commit hash) of the u-boot repository
+        type: string
+        default: mono-development
+
+  # Allow this workflow to be triggered manually from the GitHub website UI.
+  workflow_dispatch:
+    inputs:
+      rcwRef:
+        description: Git ref (tag, branch or commit hash) of the rcw repository
+        type: string
+        default: mono-development
+      atfRef:
+        description: Git ref (tag, branch or commit hash) of the atf repository
+        type: string
+        default: mono-development
+      ubootRef:
+        description: Git ref (tag, branch or commit hash) of the u-boot repository
+        type: string
+        default: mono-development
+
+jobs:
+
+  build:
+
+    name: Build Gateway bootloaders
+
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/dvnrrs-mono/firmware-builder:latest
+
+    steps:
+
+      - name: Check out rcw repository
+        uses: actions/checkout@v4
+        with:
+          repository: dvnrrs-mono/rcw
+          ref: ${{ inputs.rcwRef }}
+          path: rcw
+
+      - name: Check out atf repository
+        uses: actions/checkout@v4
+        with:
+          repository: dvnrrs-mono/atf
+          ref: ${{ inputs.atfRef }}
+          path: atf
+
+      - name: Check out u-boot repository
+        uses: actions/checkout@v4
+        with:
+          repository: dvnrrs-mono/u-boot
+          ref: ${{ inputs.ubootRef }}
+          path: u-boot
+
+      - name: Build RCW
+        working-directory: rcw
+        run: make -j4
+
+      - name: Build u-boot
+        working-directory: u-boot
+        env:
+          CROSS_COMPILE: aarch64-none-linux-gnu-
+        run: |
+          make mono_gateway_dk_defconfig
+          make -j4
+
+      - name: Build ATF and FIP image
+        working-directory: atf
+        env:
+          CROSS_COMPILE: aarch64-none-linux-gnu-
+        run: |
+          make -j4 PLAT=gateway_dk RCW=../rcw/gateway_dk/NN_FFSSPSNP_1133_5A06/rcw_1600_qspiboot.bin pbl DEBUG=1
+          make -j4 PLAT=gateway_dk BOOT_MODE=qspi BL33=../u-boot/u-boot.bin fip DEBUG=1
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway_dk_debug
+          path: atf/build/gateway_dk/debug/*
+          if-no-files-found: error
